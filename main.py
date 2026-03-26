@@ -40,7 +40,7 @@ st.sidebar.title("📂 פעולות")
 st.sidebar.markdown("---")
 
 ACTIONS = {
-    "internet_morchav": "🌐 ניתוח סטטוס אינטרנט מורכב להרצה",
+    "internet_morchav": "🌐 ניתוח סטטוס אינטרנט מחודש להרצה",
 }
 
 # Keep the selected action in session state so clicking doesn't reset the page
@@ -62,7 +62,7 @@ if st.session_state.selected_action is None:
 
 # ── Action: ניתוח סטטוס אינטרנט מורכב להרצה ──────────────────────────────────
 if st.session_state.selected_action == "internet_morchav":
-    st.header("🌐 ניתוח סטטוס אינטרנט מורכב להרצה")
+    st.header("🌐 ניתוח סטטוס אינטרנט מחודש להרצה")
     st.markdown(
         "העלה את קובץ ה-Excel המכיל את הגיליונות **סיבים**, **נחושת** ו-**כל השאר**."
     )
