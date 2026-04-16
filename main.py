@@ -120,11 +120,30 @@ if st.session_state.selected_action == "internet_morchav":
         exceptions_df = data["exceptions"]
         phone_df      = data["phone"]
 
-        st.success(f"✅ הניתוח הושלם! נמצאו {len(result_df)} הזמנות אינטרנט, {len(phone_df)} הזמנות קו טלפון.")
+        # ── Split result by "תאריך מתואם" ─────────────────────────────────
+        coord_col = "תאריך מתואם"
+        has_date_mask = (
+            result_df[coord_col].notna()
+            & (result_df[coord_col].astype(str).str.strip() != "")
+            & (result_df[coord_col].astype(str).str.strip().str.lower() != "nan")
+        )
+        result_with_date    = result_df[has_date_mask].reset_index(drop=True)
+        result_without_date = result_df[~has_date_mask].drop(columns=[coord_col]).reset_index(drop=True)
 
-        # ── Internet result preview ────────────────────────────────────────
-        st.subheader("📋 תצוגה מקדימה – סטטוס אינטרנט מורכב")
-        st.dataframe(result_df, use_container_width=True)
+        st.success(
+            f"✅ הניתוח הושלם! "
+            f"נמצאו {len(result_with_date)} הזמנות עם תאריך מתואם, "
+            f"{len(result_without_date)} הזמנות ללא תאריך מתואם, "
+            f"{len(phone_df)} הזמנות קו טלפון."
+        )
+
+        # ── Preview: with date ─────────────────────────────────────────────
+        st.subheader(f"📋 סטטוס אינטרנט – עם תאריך מתואם ({len(result_with_date)} שורות)")
+        st.dataframe(result_with_date, use_container_width=True)
+
+        # ── Preview: without date ──────────────────────────────────────────
+        st.subheader(f"📋 סטטוס אינטרנט – ללא תאריך מתואם ({len(result_without_date)} שורות)")
+        st.dataframe(result_without_date, use_container_width=True)
 
         if not exceptions_df.empty:
             st.warning(f"⚠️ נמצאו {len(exceptions_df)} שורות חריגות (סטטוס שירות לא מוכר).")
@@ -139,20 +158,33 @@ if st.session_state.selected_action == "internet_morchav":
         st.markdown("---")
         today_str = datetime.date.today().strftime("%d.%m.%Y")
 
-        # ── Download 1: Internet Morchav ───────────────────────────────────
-        internet_sheets = {"סטטוס הזמנות": result_df}
+        # ── Download 1: Internet – with coordinated date ───────────────────
+        sheets_with_date = {"סטטוס הזמנות": result_with_date}
         if not exceptions_df.empty:
-            internet_sheets["חריגים"] = exceptions_df
+            sheets_with_date["חריגים"] = exceptions_df
 
         st.download_button(
-            label="⬇️ הורד קובץ אינטרנט מורכב",
-            data=dfs_to_excel_bytes(internet_sheets),
-            file_name=f"סטטוס אינטרנט מורכב להרצה - {today_str}.xlsx",
+            label="⬇️ הורד קובץ אינטרנט – עם תאריך מתואם",
+            data=dfs_to_excel_bytes(sheets_with_date),
+            file_name=f"סטטוס אינטרנט מורכב להרצה - עם תאריך - {today_str}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="dl_internet",
+            key="dl_internet_with_date",
         )
 
-        # ── Download 2: Phone lines ────────────────────────────────────────
+        # ── Download 2: Internet – without coordinated date ────────────────
+        sheets_without_date = {"סטטוס הזמנות": result_without_date}
+        if not exceptions_df.empty:
+            sheets_without_date["חריגים"] = exceptions_df
+
+        st.download_button(
+            label="⬇️ הורד קובץ אינטרנט – ללא תאריך מתואם",
+            data=dfs_to_excel_bytes(sheets_without_date),
+            file_name=f"סטטוס אינטרנט מורכב להרצה - ללא תאריך - {today_str}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="dl_internet_without_date",
+        )
+
+        # ── Download 3: Phone lines ────────────────────────────────────────
         if not phone_df.empty:
             st.download_button(
                 label="⬇️ הורד קובץ קו טלפון",
