@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת דוחות אקסל - תיעוד אינטראקטיבי</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Rubik:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0a7c59;
+            --primary-light: #12b383;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #cbd5e1;
+            --border: #334155;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Rubik', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            min-height: 100vh;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background-color: var(--card-bg);
+            border-left: 1px solid var(--border);
+            padding: 2rem 1rem;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            transition: all 0.3s;
+            z-index: 10;
+        }
+        .sidebar h1 {
+            font-size: 1.5rem;
+            color: var(--primary);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .nav-link {
+            display: block;
+            padding: 0.75rem 1rem;
+            color: var(--text-main);
+            text-decoration: none;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .nav-link:hover, .nav-link.active {
+            background-color: var(--primary);
+            color: white;
+            transform: translateX(-5px);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-right: 280px;
+            padding: 3rem 4rem;
+            max-width: 1000px;
+        }
+
+        .section {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.5s forwards;
+            border: 1px solid var(--border);
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 { color: var(--primary); margin-bottom: 1.5rem; font-size: 1.8rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+        h3 { margin: 1.5rem 0 1rem; color: var(--text-main); }
+        p { line-height: 1.7; margin-bottom: 1rem; color: var(--text-muted); }
+        ul { margin-right: 1.5rem; margin-bottom: 1.5rem; color: var(--text-muted); line-height: 1.7; }
+        
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            direction: ltr;
+            text-align: left;
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        /* Accordion */
+        .accordion {
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        .accordion-header {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            background: var(--card-bg);
+            border: none;
+            text-align: right;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+            font-family: 'Rubik', sans-serif;
+        }
+        .accordion-header:hover { background: var(--bg-color); }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background: var(--bg-color);
+            padding: 0 1.5rem;
+        }
+        .accordion.active .accordion-content { padding: 1.5rem; max-height: 1000px; }
+        .accordion-icon { transition: transform 0.3s; }
+        .accordion.active .accordion-icon { transform: rotate(180deg); }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5rem;
+        }
+        th, td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            text-align: right;
+        }
+        th { background: var(--bg-color); font-weight: 600; color: var(--text-main); }
+        tr:hover { background: var(--bg-color); }
+
+        .theme-toggle {
+            position: fixed;
+            bottom: 2rem;
+            left: 2rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            z-index: 100;
+            transition: transform 0.2s;
+        }
+        .theme-toggle:hover { transform: scale(1.1); }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.85rem;
+            font-weight: bold;
+            background: var(--bg-color);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+
+        /* Flow diagram styling */
+        .flow-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        .flow-box {
+            background: var(--card-bg);
+            border: 2px solid var(--primary);
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            box-shadow: var(--shadow);
+            min-width: 200px;
+            text-align: center;
+            position: relative;
+        }
+        .flow-arrow {
+            color: var(--primary);
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .flow-row {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(100%); }
+            .main-content { margin-right: 0; padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <h1>📊 תיעוד מערכת</h1>
+        <a href="#overview" class="nav-link active">סקירה כללית</a>
+        <a href="#structure" class="nav-link">מבנה הפרויקט</a>
+        <a href="#flow" class="nav-link">זרימת עבודה</a>
+        <a href="#logic" class="nav-link">לוגיקה עסקית</a>
+        <a href="#io" class="nav-link">קלט ופלט</a>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Overview -->
+        <section id="overview" class="section">
+            <h2>סקירה כללית</h2>
+            <p>
+                <strong>מערכת דוחות אקסל</strong> היא אפליקציית Python המבוססת על Streamlit ומיועדת לעיבוד, סינון וסיווג אוטומטי של הזמנות תקשורת (סיבים, נחושת ומוצרים נלווים כמו BIZNET ו-PHONE).
+            </p>
+            <p>
+                המערכת קוראת קובץ נתונים גולמי המופק ממערכות חיצוניות, מנקה אותו, וקובעת את סטטוס ההזמנה המדויק לכל לקוח. המטרה היא להפיק דוחות מפוצלים ומסודרים שמוכנים להמשך טיפול ולמנוע את הצורך במיזוג נתונים ידני.
+            </p>
+        </section>
+
+        <!-- Structure -->
+        <section id="structure" class="section" style="animation-delay: 0.1s;">
+            <h2>מבנה הפרויקט</h2>
+            <div class="code-block">דוח סטטוס חדש/
+├── main.py                   ← ממשק המשתמש (Streamlit)
+├── processors/
+│   └── internet_morchav.py   ← לוגיקת עיבוד הנתונים המרכזית
+└── utils/
+    └── excel_utils.py        ← עזרים לטעינה ושמירת Excel</div>
+            <ul>
+                <li><strong><code>main.py</code>:</strong> נקודת הכניסה לאפליקציה. מנהלת את מסך העלאת הקובץ, פיצול התוצאות לטבלאות תצוגה מקדימה, וכפתורי ההורדה למשתמש.</li>
+                <li><strong><code>internet_morchav.py</code>:</strong> ליבת המערכת העסקית. הקובץ מכיל את פונקציית <code>run()</code> אשר מריצה את אלגוריתם סינון השורות, המיפוי של מוצרים נלווים (מגיליון "כל השאר") וקביעת הסטטוסים.</li>
+                <li><strong><code>excel_utils.py</code>:</strong> שכבת התשתית המטפלת בקריאה וכתיבה של DataFrames לאקסל ובניקוי רווחים מיותרים בטקסטים.</li>
+            </ul>
+        </section>
+
+        <!-- Workflow -->
+        <section id="flow" class="section" style="animation-delay: 0.2s;">
+            <h2>זרימת עבודה (Data Flow)</h2>
+            <div class="flow-container">
+                <div class="flow-box">קובץ Excel גולמי<br><small>גיליונות: סיבים, נחושת, כל השאר</small></div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-box"><code>excel_utils.load_sheets()</code><br><small>קריאה וניקוי נתונים</small></div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-box" style="background: var(--primary-light); color: white; border-color: var(--primary);">
+                    <code>internet_morchav.run()</code><br>
+                    <small>מיזוג, סינון שורה אחרונה וסיווג</small>
+                </div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-row">
+                    <div class="flow-box">דוח אינטרנט<br><small>ללא תאריך מתואם / עם תאריך מתואם</small></div>
+                    <div class="flow-box">דוח קו טלפון<br><small>PHONE</small></div>
+                    <div class="flow-box">דוח חריגים<br><small>סטטוסים לא מוכרים</small></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Business Logic -->
+        <section id="logic" class="section" style="animation-delay: 0.3s;">
+            <h2>לוגיקה עסקית <span class="badge">ליבה</span></h2>
+            
+            <div class="accordion active">
+                <button class="accordion-header">
+                    1. עיבוד הזמנות ראשיות (סיבים ונחושת)
+                    <span class="accordion-icon">▼</span>
+                </button>
+                <div class="accordion-content">
+                    <p>המערכת מחברת יחד את גיליונות <strong>סיבים</strong> ו-<strong>נחושת</strong> לטבלה ראשית אחת.</p>
+                    <ul>
+                        <li><strong>שורה אחרונה קובעת:</strong> כיוון שמספר הזמנה עשוי להופיע מספר פעמים עם עדכונים שונים, הקוד מתקבץ לפי <code>מספר הזמנה</code> ולוקח את השורה האחרונה ביותר המופיעה בקובץ.</li>
+                        <li><strong>קביעת סטטוס:</strong> הסטטוס נגזר מעמודת <code>סטטוס שירות</code>:
+                            <br>• <strong>סגור:</strong> תאריך היעד יילקח מעמודת <code>תאריך סגירת הזמנה</code>.
+                            <br>• <strong>פתוח:</strong> תאריך היעד יילקח מעמודת <code>תאום לקוח התחלה</code>.
+                            <br>• <strong>מבוטל:</strong> ההזמנה מבוטלת.
+                            <br>• ערכים אחרים נחשבים <strong>חריגים</strong> ומועברים לגיליון ייעודי (מניעת קריסה).
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="accordion">
+                <button class="accordion-header">
+                    2. שירותים משלימים מגיליון "כל השאר"
+                    <span class="accordion-icon">▼</span>
+                </button>
+                <div class="accordion-content">
+                    <p>במקביל להזמנה הראשית, לקוחות מזמינים מוצרים נלווים. אלה נמצאים בגיליון השלישי:</p>
+                    <ul>
+                        <li><strong>BIZNET (מוצר משלים):</strong> מחלצים שורות בהן <code>שירות = BIZNET</code>. הן מוזרקות בחזרה אל טבלת האינטרנט הראשית. התאריך במקרה זה נשאב מעמודת <code>פרטי תאום לקוח במשימה אחרונה בהוראת עבודה</code>.</li>
+                        <li><strong>PHONE (קו טלפון):</strong> שורות בהן <code>שירות = PHONE</code>. כדי להיחשב לקו טלפון תקין לדוח, חובה שיהיה ערך בעמודת <code>חבילת דקות</code>. מוצרים אלו יוצאים לקובץ אקסל נפרד לחלוטין.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="accordion active">
+                <button class="accordion-header">
+                    3. הורשת סטטוס (Status Inheritance) <span class="badge" style="background:var(--primary);color:white;">חשוב</span>
+                    <span class="accordion-icon">▼</span>
+                </button>
+                <div class="accordion-content">
+                    <p>כיוון שהשירותים המשלימים (BIZNET ו-PHONE) שייכים לאותה הזמנה של תשתית האינטרנט, המערכת מיישמת לוגיקה של <strong>הורשת סטטוס:</strong></p>
+                    <p>לפני שהמערכת כותבת את הפלט הסופי של מוצרי BIZNET ו-PHONE, היא בודקת:</p>
+                    <ul>
+                        <li>האם <code>מספר ההזמנה</code> שלהם מופיע במאגר הראשי (נחושת/סיבים)?</li>
+                        <li>אם <strong>כן</strong> – הם ידרסו את הסטטוס העצמאי שלהם ויקבלו את הסטטוס של ההזמנה הראשית.</li>
+                        <li><em>לדוגמה:</em> אם BIZNET הגיע כ"מבוטל" אך הזמנת הנחושת הופעלה וסומנה כ"סגור", השורה של ה-BIZNET תירשום גם היא "סגור", שכן ההזמנה עצמה (והתשתית בפרט) סגורה.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Inputs and Outputs -->
+        <section id="io" class="section" style="animation-delay: 0.4s;">
+            <h2>קלט ופלט</h2>
+            <h3>עמודות הקלט הנדרשות</h3>
+            <p>קובץ ה-Excel המקורי כולל בתוכו שורות כותרת כפולות, לכן הקוד מוגדר לחפש את הכותרות האמיתיות ב<strong>שורה 2</strong>. עמודות שחובה שיופיעו:</p>
+            <ul>
+                <li><strong>גיליונות תשתית:</strong> מספר הזמנה, מספר הכר, סטטוס שירות, תאום לקוח התחלה, תאריך סגירת הזמנה.</li>
+                <li><strong>גיליון כל השאר:</strong> שירות, סטטוס שירות, פרטי תאום לקוח במשימה אחרונה בהוראת עבודה, חבילת דקות.</li>
+            </ul>
+
+            <h3>קובצי הפלט</h3>
+            <p>האפליקציה מחלקת את התוצרים ל-3 קבצים להורדה:</p>
+            <ul>
+                <li><code>סטטוס אינטרנט מחודש להרצה - עם תאריך מתואם</code> (מכיל רק הזמנות שלקוח תואם איתן).</li>
+                <li><code>סטטוס אינטרנט מחודש להרצה - ללא תאריך מתואם</code> (מכיל שורות ריקות מתאריך עבור טיפול של הנציגים).</li>
+                <li><code>סטטוס קו טלפון</code> (מכיל לקוחות PHONE בלבד).</li>
+            </ul>
+        </section>
+    </main>
+
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" onclick="toggleTheme()" title="החלף עיצוב">🌓</button>
+
+    <script>
+        // Accordion functionality
+        document.querySelectorAll('.accordion-header').forEach(button => {
+            button.addEventListener('click', () => {
+                const accordion = button.parentElement;
+                accordion.classList.toggle('active');
+            });
+        });
+
+        // Theme Toggle functionality
+        function toggleTheme() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme');
+            if (currentTheme === 'dark') {
+                body.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Init theme
+        if (localStorage.getItem('theme') === 'dark' || 
+           (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.body.setAttribute('data-theme', 'dark');
+        }
+
+        // Active state for navigation based on scroll
+        const sections = document.querySelectorAll('section');
+        const navLinks = document.querySelectorAll('.nav-link');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href').substring(1) === current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
