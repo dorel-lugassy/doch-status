@@ -164,11 +164,10 @@ def _build_biznet_rows(rest_df: pd.DataFrame, main_status_map: dict[str, str]) -
     return rows
 
 
-def _build_phone_rows(rest_df: pd.DataFrame, main_status_map: dict[str, str]) -> list[dict]:
+def _build_phone_rows(rest_df: pd.DataFrame) -> list[dict]:
     """
     Extract rows from 'כל השאר' where שירות == PHONE.
     Returns rows for the separate phone-line report.
-    If the order exists in the main data (fiber/copper), its status overrides the PHONE status.
     """
     phone_mask = (
         (rest_df[COL_SERVICE].str.strip() == PHONE_SERVICE_VALUE) &
@@ -179,16 +178,10 @@ def _build_phone_rows(rest_df: pd.DataFrame, main_status_map: dict[str, str]) ->
 
     rows = []
     for _, row in phone_df.iterrows():
-        order_num = str(row.get(COL_ORDER_NUM, "")).strip()
-        rest_status = str(row.get(COL_REST_STATUS, "")).strip()
-        
-        # Override with main status if exists
-        final_status = main_status_map.get(order_num, rest_status)
-
         rows.append({
-            OUT_ORDER_NUM:    order_num,
+            OUT_ORDER_NUM:    str(row.get(COL_ORDER_NUM,   "")).strip(),
             OUT_CARD_NUM:     str(row.get(COL_CARD_NUM,    "")).strip(),
-            OUT_ORDER_STATUS: final_status,
+            OUT_ORDER_STATUS: str(row.get(COL_REST_STATUS, "")).strip(),
             OUT_COORD_DATE:   str(row.get(COL_COORD_TASK,  "")).strip()
                               if not _is_empty(row.get(COL_COORD_TASK)) else "",
             OUT_MINUTES:      str(row.get(COL_MINUTES,     "")).strip()
@@ -264,7 +257,7 @@ def run(
 
     # 6. Build the separate phone-line report
     _PHONE_COLS = [OUT_ORDER_NUM, OUT_CARD_NUM, OUT_ORDER_STATUS, OUT_COORD_DATE, OUT_MINUTES]
-    phone_rows  = _build_phone_rows(rest_df, main_status_map)
+    phone_rows  = _build_phone_rows(rest_df)
     phone_df    = pd.DataFrame(phone_rows, columns=_PHONE_COLS) if phone_rows else pd.DataFrame(columns=_PHONE_COLS)
 
     return result_df, exceptions_df, phone_df
