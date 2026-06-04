@@ -19,10 +19,11 @@ Tuple of two DataFrames:
 import pandas as pd
 
 # ── Column names in the source file ──────────────────────────────────────────
-COL_ORDER_NUM   = "מספר הזמנה"
-COL_CARD_NUM    = "מספר הכר"         # renamed to "מספר היכר" in output
-COL_SVC_STATUS  = "סטטוס שירות"
-COL_WO_STATUS   = "תיאור סטטוס הוראת עבודה"
+COL_ORDER_NUM    = "מספר הזמנה"
+COL_CARD_NUM     = "מספר הכר"         # renamed to "מספר היכר" in output
+COL_CUSTOMER_NUM = "מספר לקוח"
+COL_SVC_STATUS   = "סטטוס שירות"
+COL_WO_STATUS    = "תיאור סטטוס הוראת עבודה"
 COL_COORD_START = "תאום לקוח התחלה"
 COL_CLOSE_DATE  = "תאריך סגירת הזמנה"
 COL_SPEED       = "מהירות"
@@ -49,6 +50,7 @@ MESH_MSG         = "היה בהזמנה שלי ולא הותקן"
 # ── Output column names ───────────────────────────────────────────────────────
 OUT_ORDER_NUM    = "מספר הזמנה"
 OUT_CARD_NUM     = "מספר היכר"
+OUT_CUSTOMER_NUM = "מספר לקוח"
 OUT_ORDER_STATUS = "סטטוס הזמנה"
 OUT_INSTALL_DT   = "תאריך ושעת התקנה מעודכנים"
 OUT_COORD_DATE   = "תאריך מתואם"
@@ -156,6 +158,7 @@ def _build_biznet_rows(rest_df: pd.DataFrame, main_status_map: dict[str, str]) -
         rows.append({
             OUT_ORDER_NUM:    order_num,
             OUT_CARD_NUM:     str(row.get(COL_CARD_NUM,    "")).strip(),
+            OUT_CUSTOMER_NUM: str(row.get(COL_CUSTOMER_NUM, "")).strip(),
             OUT_ORDER_STATUS: final_status,
             OUT_INSTALL_DT:   "",
             OUT_COORD_DATE:   str(row.get(COL_COORD_TASK,  "")).strip()
@@ -181,6 +184,7 @@ def _build_phone_rows(rest_df: pd.DataFrame) -> list[dict]:
         rows.append({
             OUT_ORDER_NUM:    str(row.get(COL_ORDER_NUM,   "")).strip(),
             OUT_CARD_NUM:     str(row.get(COL_CARD_NUM,    "")).strip(),
+            OUT_CUSTOMER_NUM: str(row.get(COL_CUSTOMER_NUM, "")).strip(),
             OUT_ORDER_STATUS: str(row.get(COL_REST_STATUS, "")).strip(),
             OUT_COORD_DATE:   str(row.get(COL_COORD_TASK,  "")).strip()
                               if not _is_empty(row.get(COL_COORD_TASK)) else "",
@@ -223,6 +227,7 @@ def run(
     for _, row in last_rows.iterrows():
         order_num = str(row.get(COL_ORDER_NUM, "")).strip()
         card_num  = str(row.get(COL_CARD_NUM,  "")).strip()
+        cust_num  = str(row.get(COL_CUSTOMER_NUM, "")).strip()
 
         classification = _classify_order(row)
         
@@ -232,6 +237,7 @@ def run(
         flat = {
             OUT_ORDER_NUM:    order_num,
             OUT_CARD_NUM:     card_num,
+            OUT_CUSTOMER_NUM: cust_num,
             OUT_ORDER_STATUS: classification[OUT_ORDER_STATUS],
             OUT_INSTALL_DT:   classification[OUT_INSTALL_DT],
             OUT_COORD_DATE:   classification[OUT_COORD_DATE],
@@ -245,7 +251,7 @@ def run(
         else:
             output_rows.append(flat)
 
-    _COLS = [OUT_ORDER_NUM, OUT_CARD_NUM, OUT_ORDER_STATUS, OUT_INSTALL_DT, OUT_COORD_DATE]
+    _COLS = [OUT_ORDER_NUM, OUT_CARD_NUM, OUT_CUSTOMER_NUM, OUT_ORDER_STATUS, OUT_INSTALL_DT, OUT_COORD_DATE]
     result_df     = pd.DataFrame(output_rows,    columns=list(flat.keys()) if output_rows    else _COLS)
     exceptions_df = pd.DataFrame(exception_rows, columns=list(flat.keys()) if exception_rows else _COLS)
 
@@ -256,7 +262,7 @@ def run(
         result_df = pd.concat([result_df, biznet_df], ignore_index=True)
 
     # 6. Build the separate phone-line report
-    _PHONE_COLS = [OUT_ORDER_NUM, OUT_CARD_NUM, OUT_ORDER_STATUS, OUT_COORD_DATE, OUT_MINUTES]
+    _PHONE_COLS = [OUT_ORDER_NUM, OUT_CARD_NUM, OUT_CUSTOMER_NUM, OUT_ORDER_STATUS, OUT_COORD_DATE, OUT_MINUTES]
     phone_rows  = _build_phone_rows(rest_df)
     phone_df    = pd.DataFrame(phone_rows, columns=_PHONE_COLS) if phone_rows else pd.DataFrame(columns=_PHONE_COLS)
 
