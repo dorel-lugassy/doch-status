@@ -32,6 +32,7 @@ COL_SPEED       = "מהירות"
 COL_SERVICE      = "שירות"
 COL_FULL_SVC     = "שירות מלא"
 COL_REST_STATUS  = "סטטוס שירות"
+COL_BIZNET_COORD_TASK = "תאום משימה אחרונה"
 COL_COORD_TASK   = "פרטי תאום לקוח במשימה אחרונה בהוראת עבודה"
 COL_MINUTES      = "חבילת דקות"
 
@@ -161,8 +162,8 @@ def _build_biznet_rows(rest_df: pd.DataFrame, main_status_map: dict[str, str]) -
             OUT_CUSTOMER_NUM: str(row.get(COL_CUSTOMER_NUM, "")).strip(),
             OUT_ORDER_STATUS: final_status,
             OUT_INSTALL_DT:   "",
-            OUT_COORD_DATE:   str(row.get(COL_COORD_TASK,  "")).strip()
-                              if not _is_empty(row.get(COL_COORD_TASK)) else "",
+            OUT_COORD_DATE:   str(row.get(COL_BIZNET_COORD_TASK,  "")).strip()
+                              if not _is_empty(row.get(COL_BIZNET_COORD_TASK)) else "",
         })
     return rows
 
