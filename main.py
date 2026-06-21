@@ -14,7 +14,7 @@ import streamlit as st
 from utils.excel_utils import load_sheets, dfs_to_excel_bytes
 from processors import internet_morchav
 
-APP_VERSION_UPDATED_AT = "21.06.2026 12:04"
+APP_VERSION_UPDATED_AT = "21.06.2026 12:07"
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -129,6 +129,7 @@ if st.session_state.selected_action == "internet_morchav":
         exceptions_df = data["exceptions"]
         phone_df      = data["phone"]
         biznet_df     = data.get("biznet", result_df.iloc[0:0].copy())
+        biznet_df     = biznet_df.drop(columns=["תאריך ושעת התקנה מעודכנים"], errors="ignore")
 
         # ── Split result by "תאריך מתואם" ─────────────────────────────────
         coord_col = "תאריך מתואם"

@@ -163,7 +163,6 @@ def _build_biznet_rows(rest_df: pd.DataFrame, main_status_map: dict[str, str]) -
             OUT_CARD_NUM:     str(row.get(COL_CARD_NUM,    "")).strip(),
             OUT_CUSTOMER_NUM: str(row.get(COL_CUSTOMER_NUM, "")).strip(),
             OUT_ORDER_STATUS: final_status,
-            OUT_INSTALL_DT:   "",
             OUT_COORD_DATE:   str(row.get(COL_BIZNET_COORD_TASK,  "")).strip()
                               if not _is_empty(row.get(COL_BIZNET_COORD_TASK)) else "",
         })
@@ -259,12 +258,13 @@ def run(
             output_rows.append(flat)
 
     _COLS = [OUT_ORDER_NUM, OUT_CARD_NUM, OUT_CUSTOMER_NUM, OUT_ORDER_STATUS, OUT_INSTALL_DT, OUT_COORD_DATE]
+    _BIZNET_COLS = [OUT_ORDER_NUM, OUT_CARD_NUM, OUT_CUSTOMER_NUM, OUT_ORDER_STATUS, OUT_COORD_DATE]
     result_df     = pd.DataFrame(output_rows,    columns=list(flat.keys()) if output_rows    else _COLS)
     exceptions_df = pd.DataFrame(exception_rows, columns=list(flat.keys()) if exception_rows else _COLS)
 
     # 5. Build the separate BIZNET report
     biznet_rows = _build_biznet_rows(rest_df, main_status_map)
-    biznet_df = pd.DataFrame(biznet_rows, columns=_COLS) if biznet_rows else pd.DataFrame(columns=_COLS)
+    biznet_df = pd.DataFrame(biznet_rows, columns=_BIZNET_COLS) if biznet_rows else pd.DataFrame(columns=_BIZNET_COLS)
 
     # 6. Build the separate phone-line report
     _PHONE_COLS = [OUT_ORDER_NUM, OUT_CARD_NUM, OUT_CUSTOMER_NUM, OUT_ORDER_STATUS, OUT_COORD_DATE, OUT_MINUTES]
