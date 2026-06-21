@@ -11,9 +11,11 @@ Input sheets
 
 Output
 ------
-Tuple of two DataFrames:
+Tuple of four DataFrames:
   1. result_df    – the main processed table
   2. exceptions_df – rows whose "סטטוס שירות" didn't match any known value
+  3. phone_df     – separate phone-line report
+  4. biznet_df    – separate BIZNET report
 """
 
 import pandas as pd
@@ -199,7 +201,7 @@ def run(
     fiber_df:  pd.DataFrame,
     copper_df: pd.DataFrame,
     rest_df:   pd.DataFrame,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Main entry point.  Processes fiber + copper sheets and cross-references
     with the "כל השאר" sheet to produce the final report.
@@ -210,6 +212,10 @@ def run(
         The cleaned, classified orders table.
     exceptions_df : pd.DataFrame
         Orders whose service status was unrecognised.
+    phone_df : pd.DataFrame
+        PHONE service rows with a minute package.
+    biznet_df : pd.DataFrame
+        BIZNET service rows from the supplemental sheet.
     """
     # 1. Combine fiber and copper – they share the same structure
     combined_df = pd.concat([fiber_df, copper_df], ignore_index=True)
@@ -256,15 +262,13 @@ def run(
     result_df     = pd.DataFrame(output_rows,    columns=list(flat.keys()) if output_rows    else _COLS)
     exceptions_df = pd.DataFrame(exception_rows, columns=list(flat.keys()) if exception_rows else _COLS)
 
-    # 5. Append BIZNET rows from "כל השאר" to the bottom of the result
+    # 5. Build the separate BIZNET report
     biznet_rows = _build_biznet_rows(rest_df, main_status_map)
-    if biznet_rows:
-        biznet_df = pd.DataFrame(biznet_rows, columns=_COLS)
-        result_df = pd.concat([result_df, biznet_df], ignore_index=True)
+    biznet_df = pd.DataFrame(biznet_rows, columns=_COLS) if biznet_rows else pd.DataFrame(columns=_COLS)
 
     # 6. Build the separate phone-line report
     _PHONE_COLS = [OUT_ORDER_NUM, OUT_CARD_NUM, OUT_CUSTOMER_NUM, OUT_ORDER_STATUS, OUT_COORD_DATE, OUT_MINUTES]
     phone_rows  = _build_phone_rows(rest_df)
     phone_df    = pd.DataFrame(phone_rows, columns=_PHONE_COLS) if phone_rows else pd.DataFrame(columns=_PHONE_COLS)
 
-    return result_df, exceptions_df, phone_df
+    return result_df, exceptions_df, phone_df, biznet_df

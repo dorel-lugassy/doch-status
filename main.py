@@ -14,6 +14,8 @@ import streamlit as st
 from utils.excel_utils import load_sheets, dfs_to_excel_bytes
 from processors import internet_morchav
 
+APP_VERSION_UPDATED_AT = "21.06.2026 11:59"
+
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="מערכת דוחות אקסל",
@@ -55,6 +57,7 @@ for key, label in ACTIONS.items():
 
 # ── Main area ─────────────────────────────────────────────────────────────────
 st.title("📊 מערכת דוחות אקסל")
+st.caption(f"גרסא: {APP_VERSION_UPDATED_AT}")
 
 if st.session_state.selected_action is None:
     st.info("בחר פעולה מהתפריט משמאל כדי להתחיל.")
@@ -83,7 +86,7 @@ if st.session_state.selected_action == "internet_morchav":
                         sheet_names=["סיבים", "נחושת", "כל השאר"],
                     )
 
-                    result_df, exceptions_df, phone_df = internet_morchav.run(
+                    result_df, exceptions_df, phone_df, biznet_df = internet_morchav.run(
                         fiber_df  = sheets["סיבים"],
                         copper_df = sheets["נחושת"],
                         rest_df   = sheets["כל השאר"],
@@ -93,6 +96,7 @@ if st.session_state.selected_action == "internet_morchav":
                         "result":     result_df,
                         "exceptions": exceptions_df,
                         "phone":      phone_df,
+                        "biznet":     biznet_df,
                     }
                 except Exception as e:
                     import traceback
@@ -119,6 +123,7 @@ if st.session_state.selected_action == "internet_morchav":
         result_df     = data["result"]
         exceptions_df = data["exceptions"]
         phone_df      = data["phone"]
+        biznet_df     = data.get("biznet", result_df.iloc[0:0].copy())
 
         # ── Split result by "תאריך מתואם" ─────────────────────────────────
         coord_col = "תאריך מתואם"
@@ -134,6 +139,7 @@ if st.session_state.selected_action == "internet_morchav":
             f"✅ הניתוח הושלם! "
             f"נמצאו {len(result_with_date)} הזמנות עם תאריך מתואם, "
             f"{len(result_without_date)} הזמנות ללא תאריך מתואם, "
+            f"{len(biznet_df)} הזמנות BIZNET, "
             f"{len(phone_df)} הזמנות קו טלפון."
         )
 
@@ -154,6 +160,11 @@ if st.session_state.selected_action == "internet_morchav":
         if not phone_df.empty:
             st.subheader("📞 תצוגה מקדימה – הזמנות קו טלפון")
             st.dataframe(phone_df, use_container_width=True)
+
+        # ── BIZNET result preview ─────────────────────────────────────────
+        if not biznet_df.empty:
+            st.subheader("🌐 תצוגה מקדימה – הזמנות BIZNET")
+            st.dataframe(biznet_df, use_container_width=True)
 
         st.markdown("---")
         today_str = datetime.date.today().strftime("%d.%m.%Y")
@@ -184,7 +195,17 @@ if st.session_state.selected_action == "internet_morchav":
             key="dl_internet_without_date",
         )
 
-        # ── Download 3: Phone lines ────────────────────────────────────────
+        # ── Download 3: BIZNET ─────────────────────────────────────────────
+        if not biznet_df.empty:
+            st.download_button(
+                label="⬇️ הורד קובץ BIZNET",
+                data=dfs_to_excel_bytes({"הזמנות BIZNET": biznet_df}),
+                file_name=f"סטטוס BIZNET - {today_str}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="dl_biznet",
+            )
+
+        # ── Download 4: Phone lines ────────────────────────────────────────
         if not phone_df.empty:
             st.download_button(
                 label="⬇️ הורד קובץ קו טלפון",
