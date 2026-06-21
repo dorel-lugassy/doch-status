@@ -14,7 +14,7 @@ import streamlit as st
 from utils.excel_utils import load_sheets, dfs_to_excel_bytes
 from processors import internet_morchav
 
-APP_VERSION_UPDATED_AT = "21.06.2026 11:59"
+APP_VERSION_UPDATED_AT = "21.06.2026 12:04"
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -86,11 +86,16 @@ if st.session_state.selected_action == "internet_morchav":
                         sheet_names=["סיבים", "נחושת", "כל השאר"],
                     )
 
-                    result_df, exceptions_df, phone_df, biznet_df = internet_morchav.run(
+                    analysis_output = internet_morchav.run(
                         fiber_df  = sheets["סיבים"],
                         copper_df = sheets["נחושת"],
                         rest_df   = sheets["כל השאר"],
                     )
+                    if len(analysis_output) == 4:
+                        result_df, exceptions_df, phone_df, biznet_df = analysis_output
+                    else:
+                        result_df, exceptions_df, phone_df = analysis_output
+                        biznet_df = result_df.iloc[0:0].copy()
 
                     st.session_state["analysis_result"] = {
                         "result":     result_df,
