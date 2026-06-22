@@ -86,6 +86,32 @@ def _is_empty(val) -> bool:
     return str(val).strip().lower() in ("", "nan", "none", "nat")
 
 
+def _format_ddmmyyyy(val) -> str:
+    """
+    Normalize date-like values to DD/MM/YYYY text.
+    If the value cannot be parsed as a date, keep the original text.
+    """
+    if _is_empty(val):
+        return ""
+
+    text = str(val).strip()
+    date_head = text.split()[0].split("T")[0]
+    separator = "-" if "-" in date_head else "/" if "/" in date_head else None
+    parts = date_head.split(separator) if separator else []
+    starts_with_year = len(parts) == 3 and len(parts[0]) == 4 and parts[0].isdigit()
+
+    parsed = pd.to_datetime(
+        text,
+        yearfirst=starts_with_year,
+        dayfirst=not starts_with_year,
+        errors="coerce",
+    )
+    if pd.isna(parsed):
+        return text
+
+    return parsed.strftime("%d/%m/%Y")
+
+
 def _classify_order(row: pd.Series) -> dict:
     """
     Apply the business rules to a single row.
@@ -163,8 +189,7 @@ def _build_biznet_rows(rest_df: pd.DataFrame, main_status_map: dict[str, str]) -
             OUT_CARD_NUM:     str(row.get(COL_CARD_NUM,    "")).strip(),
             OUT_CUSTOMER_NUM: str(row.get(COL_CUSTOMER_NUM, "")).strip(),
             OUT_ORDER_STATUS: final_status,
-            OUT_COORD_DATE:   str(row.get(COL_BIZNET_COORD_TASK,  "")).strip()
-                              if not _is_empty(row.get(COL_BIZNET_COORD_TASK)) else "",
+            OUT_COORD_DATE:   _format_ddmmyyyy(row.get(COL_BIZNET_COORD_TASK)),
         })
     return rows
 

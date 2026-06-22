@@ -38,7 +38,10 @@ def load_sheets(uploaded_file, sheet_names: list[str]) -> dict[str, pd.DataFrame
     return result
 
 
-def dfs_to_excel_bytes(sheets: dict[str, pd.DataFrame]) -> bytes:
+def dfs_to_excel_bytes(
+    sheets: dict[str, pd.DataFrame],
+    text_columns: set[str] | None = None,
+) -> bytes:
     """
     Serialize one or more DataFrames into an in-memory Excel file.
 
@@ -46,14 +49,26 @@ def dfs_to_excel_bytes(sheets: dict[str, pd.DataFrame]) -> bytes:
     ----------
     sheets : dict[str, pd.DataFrame]
         Mapping of sheet name → DataFrame to write.
+    text_columns : set[str] | None
+        Column names to force as Excel text cells.
 
     Returns
     -------
     bytes
         Raw bytes of the .xlsx file, ready for st.download_button.
     """
+    text_columns = text_columns or set()
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
         for sheet_name, df in sheets.items():
             df.to_excel(writer, sheet_name=sheet_name, index=False)
+            worksheet = writer.sheets[sheet_name]
+            for col_idx, col_name in enumerate(df.columns, start=1):
+                if col_name not in text_columns:
+                    continue
+                for row_idx in range(2, len(df) + 2):
+                    cell = worksheet.cell(row=row_idx, column=col_idx)
+                    cell.number_format = "@"
+                    if cell.value is not None:
+                        cell.value = str(cell.value)
     return buffer.getvalue()
