@@ -14,7 +14,7 @@ import streamlit as st
 from utils.excel_utils import load_sheets, dfs_to_excel_bytes
 from processors import internet_morchav
 
-APP_VERSION_UPDATED_AT = "22.06.2026 09:53"
+APP_VERSION_UPDATED_AT = "22.06.2026 09:59"
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(

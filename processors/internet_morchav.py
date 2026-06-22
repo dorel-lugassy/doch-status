@@ -86,9 +86,9 @@ def _is_empty(val) -> bool:
     return str(val).strip().lower() in ("", "nan", "none", "nat")
 
 
-def _format_ddmmyyyy(val) -> str:
+def _format_fireberry_date(val) -> str:
     """
-    Normalize date-like values to DD/MM/YYYY text.
+    Normalize date-like values to Fireberry date text: YYYY-MM-DD.
     If the value cannot be parsed as a date, keep the original text.
     """
     if _is_empty(val):
@@ -109,7 +109,7 @@ def _format_ddmmyyyy(val) -> str:
     if pd.isna(parsed):
         return text
 
-    return parsed.strftime("%d/%m/%Y")
+    return parsed.strftime("%Y-%m-%d")
 
 
 def _classify_order(row: pd.Series) -> dict:
@@ -189,7 +189,7 @@ def _build_biznet_rows(rest_df: pd.DataFrame, main_status_map: dict[str, str]) -
             OUT_CARD_NUM:     str(row.get(COL_CARD_NUM,    "")).strip(),
             OUT_CUSTOMER_NUM: str(row.get(COL_CUSTOMER_NUM, "")).strip(),
             OUT_ORDER_STATUS: final_status,
-            OUT_COORD_DATE:   _format_ddmmyyyy(row.get(COL_BIZNET_COORD_TASK)),
+            OUT_COORD_DATE:   _format_fireberry_date(row.get(COL_BIZNET_COORD_TASK)),
         })
     return rows
 
