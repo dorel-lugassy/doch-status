@@ -14,7 +14,7 @@ import streamlit as st
 from utils.excel_utils import load_sheets, dfs_to_excel_bytes
 from processors import internet_morchav
 
-APP_VERSION_UPDATED_AT = "22.06.2026 08:49"
+APP_VERSION_UPDATED_AT = "22.06.2026 09:53"
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -205,7 +205,7 @@ if st.session_state.selected_action == "internet_morchav":
         if not biznet_df.empty:
             st.download_button(
                 label="⬇️ הורד קובץ BIZNET",
-                data=dfs_to_excel_bytes({"הזמנות BIZNET": biznet_df}, text_columns={coord_col}),
+                data=dfs_to_excel_bytes({"הזמנות BIZNET": biznet_df}),
                 file_name=f"סטטוס BIZNET - {today_str}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key="dl_biznet",

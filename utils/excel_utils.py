@@ -5,7 +5,13 @@ Shared helpers for loading and saving Excel files.
 """
 
 import io
+from typing import Optional, Set
+
 import pandas as pd
+
+
+BIZNET_SHEET_NAME = "הזמנות BIZNET"
+COORD_DATE_COL = "תאריך מתואם"
 
 
 def load_sheets(uploaded_file, sheet_names: list[str]) -> dict[str, pd.DataFrame]:
@@ -40,7 +46,7 @@ def load_sheets(uploaded_file, sheet_names: list[str]) -> dict[str, pd.DataFrame
 
 def dfs_to_excel_bytes(
     sheets: dict[str, pd.DataFrame],
-    text_columns: set[str] | None = None,
+    text_columns: Optional[Set[str]] = None,
 ) -> bytes:
     """
     Serialize one or more DataFrames into an in-memory Excel file.
@@ -63,8 +69,11 @@ def dfs_to_excel_bytes(
         for sheet_name, df in sheets.items():
             df.to_excel(writer, sheet_name=sheet_name, index=False)
             worksheet = writer.sheets[sheet_name]
+            sheet_text_columns = set(text_columns)
+            if sheet_name == BIZNET_SHEET_NAME:
+                sheet_text_columns.add(COORD_DATE_COL)
             for col_idx, col_name in enumerate(df.columns, start=1):
-                if col_name not in text_columns:
+                if col_name not in sheet_text_columns:
                     continue
                 for row_idx in range(2, len(df) + 2):
                     cell = worksheet.cell(row=row_idx, column=col_idx)
