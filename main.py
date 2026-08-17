@@ -16,7 +16,7 @@ import streamlit as st
 from utils.excel_utils import load_sheets, dfs_to_excel_bytes
 from processors import internet_morchav
 
-APP_VERSION_UPDATED_AT = "17.08.2026 11:38"
+APP_VERSION_UPDATED_AT = "17.08.2026 11:47"
 
 FILTERED_ORIGINAL_SELLERS = ("אליאור ביטון", "זהבה בלאי", "עומר בר מוחה")
 SELLER_FILTER_COLUMNS = {
@@ -146,8 +146,48 @@ if st.session_state.selected_action == "internet_morchav":
     )
 
     if uploaded:
+        action_col, mg_col = st.columns(2)
+
+        with action_col:
+            run_analysis = st.button("▶️ הפעל ניתוח", key="run_internet_morchav")
+
+        with mg_col:
+            prepare_mg_report = st.button("⚙️ דוח עבור MG", key="prepare_mg_report_top")
+
+        if "mg_report_bytes" in st.session_state:
+            mg_col.download_button(
+                label="⬇️ הורד דוח עבור MG",
+                data=st.session_state["mg_report_bytes"],
+                file_name=f"דוח עבור MG - {datetime.date.today().strftime('%d.%m.%Y')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="dl_mg_report_top",
+            )
+
+        if prepare_mg_report:
+            with st.spinner("מכין דוח עבור MG..."):
+                try:
+                    filtered_original_bytes = filtered_original_workbook_bytes(uploaded)
+                    st.session_state["mg_report_bytes"] = filtered_original_bytes
+                    st.success("✅ דוח עבור MG מוכן להורדה.")
+                except Exception as e:
+                    import traceback
+                    st.error("❌ שגיאה בהכנת דוח עבור MG")
+                    st.markdown(
+                        f"""
+**סוג השגיאה:** `{type(e).__name__}`
+
+**פירוט:** `{e}`
+
+**מה לבדוק:**
+- האם שמות הגיליונות בקובץ הם בדיוק: `סיבים`, `נחושת`, `כל השאר`?
+- האם קיימות עמודות הפילטר הנדרשות: G בגיליונות `סיבים`/`נחושת`, ו-I בגיליון `כל השאר`?
+"""
+                    )
+                    with st.expander("🔍 פרטי שגיאה מלאים (Traceback)"):
+                        st.code(traceback.format_exc(), language="python")
+
         # Run analysis button
-        if st.button("▶️ הפעל ניתוח", key="run_internet_morchav"):
+        if run_analysis:
             with st.spinner("מנתח את הקובץ..."):
                 try:
                     sheets = load_sheets(
@@ -172,7 +212,6 @@ if st.session_state.selected_action == "internet_morchav":
                         "phone":      phone_df,
                         "biznet":     biznet_df,
                         "source_workbook": uploaded.getvalue(),
-                        "filtered_original": None,
                     }
                 except Exception as e:
                     import traceback
@@ -201,8 +240,7 @@ if st.session_state.selected_action == "internet_morchav":
         phone_df      = data["phone"]
         biznet_df     = data.get("biznet", result_df.iloc[0:0].copy())
         biznet_df     = biznet_df.drop(columns=["תאריך ושעת התקנה מעודכנים"], errors="ignore")
-        source_workbook_bytes = data.get("source_workbook")
-        filtered_original_bytes = data.get("filtered_original")
+        filtered_original_bytes = st.session_state.get("mg_report_bytes")
 
         # ── Split result by "תאריך מתואם" ─────────────────────────────────
         coord_col = "תאריך מתואם"
@@ -284,17 +322,11 @@ if st.session_state.selected_action == "internet_morchav":
             )
 
         # ── Download 4: Filtered original workbook ────────────────────────
-        if not filtered_original_bytes and source_workbook_bytes:
-            if st.button("⚙️ הכן קובץ מקור מסונן לפי מוכרן", key="prepare_filtered_original"):
-                with st.spinner("מכין קובץ מקור מסונן לפי מוכרן..."):
-                    filtered_original_bytes = filtered_original_workbook_bytes(source_workbook_bytes)
-                    data["filtered_original"] = filtered_original_bytes
-
         if filtered_original_bytes:
             st.download_button(
-                label="⬇️ הורד קובץ מקור מסונן לפי מוכרן",
+                label="⬇️ הורד דוח עבור MG",
                 data=filtered_original_bytes,
-                file_name=f"דוח מקור מסונן לפי מוכרן - {today_str}.xlsx",
+                file_name=f"דוח עבור MG - {today_str}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key="dl_filtered_original",
             )
