@@ -10,13 +10,15 @@ Structure:
 
 import datetime
 import io
+from copy import copy
+
 import streamlit as st
 from openpyxl import load_workbook
 
 from utils.excel_utils import load_sheets, dfs_to_excel_bytes
 from processors import internet_morchav
 
-APP_VERSION_UPDATED_AT = "17.08.2026 11:21"
+APP_VERSION_UPDATED_AT = "17.08.2026 11:24"
 
 FILTERED_ORIGINAL_SELLERS = ("אליאור ביטון", "זהבה בלאי", "עומר בר מוחה")
 SELLER_FILTER_COLUMNS = {
@@ -30,6 +32,50 @@ def _cell_text(value) -> str:
     if value is None:
         return ""
     return str(value).strip()
+
+
+def _copy_row(worksheet, source_row_idx: int, target_row_idx: int) -> None:
+    if source_row_idx == target_row_idx:
+        return
+
+    source_dim = worksheet.row_dimensions[source_row_idx]
+    target_dim = worksheet.row_dimensions[target_row_idx]
+    target_dim.height = source_dim.height
+    target_dim.hidden = source_dim.hidden
+    target_dim.outlineLevel = source_dim.outlineLevel
+    target_dim.collapsed = source_dim.collapsed
+
+    for col_idx in range(1, worksheet.max_column + 1):
+        source_cell = worksheet.cell(row=source_row_idx, column=col_idx)
+        target_cell = worksheet.cell(row=target_row_idx, column=col_idx)
+
+        target_cell.value = source_cell.value
+        if source_cell.has_style:
+            target_cell._style = copy(source_cell._style)
+        target_cell.number_format = source_cell.number_format
+        target_cell.font = copy(source_cell.font)
+        target_cell.fill = copy(source_cell.fill)
+        target_cell.border = copy(source_cell.border)
+        target_cell.alignment = copy(source_cell.alignment)
+        target_cell.protection = copy(source_cell.protection)
+        target_cell.comment = copy(source_cell.comment)
+        target_cell.hyperlink = copy(source_cell.hyperlink)
+
+
+def _filter_worksheet_by_seller(worksheet, seller_col_idx: int, allowed_sellers: set[str]) -> None:
+    keep_rows = [1, 2]
+    for row_idx in range(3, worksheet.max_row + 1):
+        seller_name = _cell_text(worksheet.cell(row=row_idx, column=seller_col_idx).value)
+        if seller_name in allowed_sellers:
+            keep_rows.append(row_idx)
+
+    original_max_row = worksheet.max_row
+    for target_row_idx, source_row_idx in enumerate(keep_rows, start=1):
+        _copy_row(worksheet, source_row_idx, target_row_idx)
+
+    first_delete_row = len(keep_rows) + 1
+    if first_delete_row <= original_max_row:
+        worksheet.delete_rows(first_delete_row, original_max_row - first_delete_row + 1)
 
 
 def filtered_original_workbook_bytes(uploaded_file) -> bytes:
@@ -46,10 +92,7 @@ def filtered_original_workbook_bytes(uploaded_file) -> bytes:
             raise ValueError(f"חסר גיליון נדרש עבור דוח מוכרנים: {sheet_name}")
 
         worksheet = workbook[sheet_name]
-        for row_idx in range(worksheet.max_row, 2, -1):
-            seller_name = _cell_text(worksheet.cell(row=row_idx, column=seller_col_idx).value)
-            if seller_name not in allowed_sellers:
-                worksheet.delete_rows(row_idx)
+        _filter_worksheet_by_seller(worksheet, seller_col_idx, allowed_sellers)
 
     buffer = io.BytesIO()
     workbook.save(buffer)
