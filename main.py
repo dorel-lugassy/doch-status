@@ -10,15 +10,13 @@ Structure:
 
 import datetime
 import io
-from copy import copy
 
 import streamlit as st
-from openpyxl import load_workbook
 
 from utils.excel_utils import load_sheets, dfs_to_excel_bytes
 from processors import internet_morchav
 
-APP_VERSION_UPDATED_AT = "17.08.2026 11:24"
+APP_VERSION_UPDATED_AT = "17.08.2026 11:38"
 
 FILTERED_ORIGINAL_SELLERS = ("אליאור ביטון", "זהבה בלאי", "עומר בר מוחה")
 SELLER_FILTER_COLUMNS = {
@@ -34,48 +32,35 @@ def _cell_text(value) -> str:
     return str(value).strip()
 
 
-def _copy_row(worksheet, source_row_idx: int, target_row_idx: int) -> None:
-    if source_row_idx == target_row_idx:
-        return
-
-    source_dim = worksheet.row_dimensions[source_row_idx]
-    target_dim = worksheet.row_dimensions[target_row_idx]
-    target_dim.height = source_dim.height
-    target_dim.hidden = source_dim.hidden
-    target_dim.outlineLevel = source_dim.outlineLevel
-    target_dim.collapsed = source_dim.collapsed
-
-    for col_idx in range(1, worksheet.max_column + 1):
-        source_cell = worksheet.cell(row=source_row_idx, column=col_idx)
-        target_cell = worksheet.cell(row=target_row_idx, column=col_idx)
-
-        target_cell.value = source_cell.value
-        if source_cell.has_style:
-            target_cell._style = copy(source_cell._style)
-        target_cell.number_format = source_cell.number_format
-        target_cell.font = copy(source_cell.font)
-        target_cell.fill = copy(source_cell.fill)
-        target_cell.border = copy(source_cell.border)
-        target_cell.alignment = copy(source_cell.alignment)
-        target_cell.protection = copy(source_cell.protection)
-        target_cell.comment = copy(source_cell.comment)
-        target_cell.hyperlink = copy(source_cell.hyperlink)
+def _uploaded_file_bytes(uploaded_file) -> bytes:
+    if isinstance(uploaded_file, bytes):
+        return uploaded_file
+    return uploaded_file.getvalue()
 
 
 def _filter_worksheet_by_seller(worksheet, seller_col_idx: int, allowed_sellers: set[str]) -> None:
-    keep_rows = [1, 2]
-    for row_idx in range(3, worksheet.max_row + 1):
+    rows_to_delete = []
+    for row_idx in range(worksheet.max_row, 2, -1):
         seller_name = _cell_text(worksheet.cell(row=row_idx, column=seller_col_idx).value)
-        if seller_name in allowed_sellers:
-            keep_rows.append(row_idx)
+        if seller_name not in allowed_sellers:
+            rows_to_delete.append(row_idx)
 
-    original_max_row = worksheet.max_row
-    for target_row_idx, source_row_idx in enumerate(keep_rows, start=1):
-        _copy_row(worksheet, source_row_idx, target_row_idx)
+    run_start = None
+    previous_row = None
+    for row_idx in rows_to_delete:
+        if run_start is None:
+            run_start = previous_row = row_idx
+            continue
 
-    first_delete_row = len(keep_rows) + 1
-    if first_delete_row <= original_max_row:
-        worksheet.delete_rows(first_delete_row, original_max_row - first_delete_row + 1)
+        if row_idx == previous_row - 1:
+            previous_row = row_idx
+            continue
+
+        worksheet.delete_rows(previous_row, run_start - previous_row + 1)
+        run_start = previous_row = row_idx
+
+    if run_start is not None:
+        worksheet.delete_rows(previous_row, run_start - previous_row + 1)
 
 
 def filtered_original_workbook_bytes(uploaded_file) -> bytes:
@@ -83,7 +68,9 @@ def filtered_original_workbook_bytes(uploaded_file) -> bytes:
     Return a copy of the original workbook with only selected seller rows.
     Rows 1-2 are kept; filtering starts from row 3.
     """
-    source_bytes = uploaded_file.getvalue()
+    from openpyxl import load_workbook
+
+    source_bytes = _uploaded_file_bytes(uploaded_file)
     workbook = load_workbook(io.BytesIO(source_bytes))
     allowed_sellers = {_cell_text(seller) for seller in FILTERED_ORIGINAL_SELLERS}
 
@@ -179,14 +166,13 @@ if st.session_state.selected_action == "internet_morchav":
                         result_df, exceptions_df, phone_df = analysis_output
                         biznet_df = result_df.iloc[0:0].copy()
 
-                    filtered_original_bytes = filtered_original_workbook_bytes(uploaded)
-
                     st.session_state["analysis_result"] = {
                         "result":     result_df,
                         "exceptions": exceptions_df,
                         "phone":      phone_df,
                         "biznet":     biznet_df,
-                        "filtered_original": filtered_original_bytes,
+                        "source_workbook": uploaded.getvalue(),
+                        "filtered_original": None,
                     }
                 except Exception as e:
                     import traceback
@@ -215,6 +201,7 @@ if st.session_state.selected_action == "internet_morchav":
         phone_df      = data["phone"]
         biznet_df     = data.get("biznet", result_df.iloc[0:0].copy())
         biznet_df     = biznet_df.drop(columns=["תאריך ושעת התקנה מעודכנים"], errors="ignore")
+        source_workbook_bytes = data.get("source_workbook")
         filtered_original_bytes = data.get("filtered_original")
 
         # ── Split result by "תאריך מתואם" ─────────────────────────────────
@@ -226,19 +213,12 @@ if st.session_state.selected_action == "internet_morchav":
         )
         result_with_date    = result_df[has_date_mask].reset_index(drop=True)
         result_without_date = result_df[~has_date_mask].drop(columns=[coord_col]).reset_index(drop=True)
-        filtered_original_msg = (
-            "ונוצר קובץ מקור מסונן לפי מוכרן."
-            if filtered_original_bytes
-            else "קובץ מקור מסונן לפי מוכרן ייווצר בהרצה מחדש."
-        )
-
         st.success(
             f"✅ הניתוח הושלם! "
             f"נמצאו {len(result_with_date)} הזמנות עם תאריך מתואם, "
             f"{len(result_without_date)} הזמנות ללא תאריך מתואם, "
             f"{len(biznet_df)} הזמנות BIZNET, "
-            f"{len(phone_df)} הזמנות קו טלפון, "
-            f"{filtered_original_msg}"
+            f"{len(phone_df)} הזמנות קו טלפון."
         )
 
         # ── Preview: with date ─────────────────────────────────────────────
@@ -304,6 +284,12 @@ if st.session_state.selected_action == "internet_morchav":
             )
 
         # ── Download 4: Filtered original workbook ────────────────────────
+        if not filtered_original_bytes and source_workbook_bytes:
+            if st.button("⚙️ הכן קובץ מקור מסונן לפי מוכרן", key="prepare_filtered_original"):
+                with st.spinner("מכין קובץ מקור מסונן לפי מוכרן..."):
+                    filtered_original_bytes = filtered_original_workbook_bytes(source_workbook_bytes)
+                    data["filtered_original"] = filtered_original_bytes
+
         if filtered_original_bytes:
             st.download_button(
                 label="⬇️ הורד קובץ מקור מסונן לפי מוכרן",
