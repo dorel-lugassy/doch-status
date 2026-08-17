@@ -16,7 +16,7 @@ import streamlit as st
 from utils.excel_utils import load_sheets, dfs_to_excel_bytes
 from processors import internet_morchav
 
-APP_VERSION_UPDATED_AT = "17.08.2026 11:51"
+APP_VERSION_UPDATED_AT = "17.08.2026 12:01"
 
 FILTERED_ORIGINAL_SELLERS = ("אליאור ביטון", "זהבה בלאי", "עומר בר מוחה")
 SELLER_FILTER_COLUMNS = {
@@ -98,9 +98,80 @@ st.markdown(
     """
     <style>
         body, .stApp { direction: rtl; text-align: right; }
-        .stButton button { width: 100%; }
-        .stDownloadButton button { background-color: #0a7c59; color: white; width: 100%; }
+        .stButton button,
+        .stDownloadButton button {
+            width: 100%;
+            min-height: 2.4rem;
+            border-radius: 0.45rem;
+            font-weight: 600;
+            white-space: normal;
+            line-height: 1.2;
+            padding: 0.45rem 0.75rem;
+        }
+        .stDownloadButton button {
+            background-color: #0a7c59;
+            color: white;
+        }
+        .stDownloadButton button:disabled {
+            background-color: #e8edf3;
+            color: #8c98a8;
+        }
         .block-container { padding-top: 2rem; }
+        div[data-testid="stFileUploader"] {
+            margin-bottom: 0.15rem;
+        }
+        div[data-testid="stFileUploader"] section {
+            min-height: 3.6rem;
+            padding: 0.55rem 0.75rem;
+            border-radius: 0.5rem;
+        }
+        div[data-testid="stHorizontalBlock"] {
+            gap: 0.65rem;
+        }
+        .action-offset {
+            height: 1.8rem;
+        }
+        .status-summary {
+            display: flex;
+            width: fit-content;
+            max-width: 100%;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.6rem;
+            margin: 0.9rem 0 0.65rem 0;
+            padding: 0.75rem 0.9rem;
+            border: 1px solid #b7ebcc;
+            border-radius: 0.5rem;
+            background: #ecfdf3;
+            color: #087443;
+            font-weight: 600;
+        }
+        .status-summary span {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.18rem 0.55rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(10, 124, 89, 0.14);
+        }
+        .download-heading {
+            margin: 0.45rem 0 0.35rem 0;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #243044;
+        }
+        .soft-note {
+            width: fit-content;
+            max-width: 100%;
+            margin: 0.5rem 0 0.2rem 0;
+            padding: 0.45rem 0.65rem;
+            border: 1px solid #b7ebcc;
+            border-radius: 0.45rem;
+            background: #ecfdf3;
+            color: #0a7c59;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -139,38 +210,64 @@ if st.session_state.selected_action == "internet_morchav":
         "העלה את קובץ ה-Excel המכיל את הגיליונות **סיבים**, **נחושת** ו-**כל השאר**."
     )
 
-    uploaded = st.file_uploader(
-        "בחר קובץ Excel",
-        type=["xlsx"],
-        key="upload_internet_morchav",
-    )
+    run_analysis = False
+    prepare_mg_report = False
+    upload_col, action_col, mg_col, mg_download_col = st.columns([5.3, 1.15, 1.15, 1.1])
+
+    with upload_col:
+        uploaded = st.file_uploader(
+            "בחר קובץ Excel",
+            type=["xlsx"],
+            key="upload_internet_morchav",
+        )
 
     if uploaded:
-        action_col, mg_col = st.columns(2)
+        uploaded_signature = (uploaded.name, uploaded.size)
+        if st.session_state.get("uploaded_file_signature") != uploaded_signature:
+            st.session_state["uploaded_file_signature"] = uploaded_signature
+            st.session_state.pop("analysis_result", None)
+            st.session_state.pop("mg_report_bytes", None)
+    else:
+        st.session_state.pop("uploaded_file_signature", None)
+        st.session_state.pop("analysis_result", None)
+        st.session_state.pop("mg_report_bytes", None)
 
-        with action_col:
-            run_analysis = st.button("▶️ הפעל ניתוח", key="run_internet_morchav")
+    with action_col:
+        st.markdown('<div class="action-offset"></div>', unsafe_allow_html=True)
+        run_analysis = st.button(
+            "▶️ הפעל ניתוח",
+            key="run_internet_morchav",
+            disabled=uploaded is None,
+        )
 
-        with mg_col:
-            prepare_mg_report = st.button("⚙️ דוח עבור MG", key="prepare_mg_report_top")
+    with mg_col:
+        st.markdown('<div class="action-offset"></div>', unsafe_allow_html=True)
+        prepare_mg_report = st.button(
+            "⚙️ דוח עבור MG",
+            key="prepare_mg_report_top",
+            disabled=uploaded is None,
+        )
 
-        if "mg_report_bytes" in st.session_state:
-            mg_col.download_button(
-                label="⬇️ הורד דוח עבור MG",
+    with mg_download_col:
+        st.markdown('<div class="action-offset"></div>', unsafe_allow_html=True)
+        if uploaded and "mg_report_bytes" in st.session_state:
+            st.download_button(
+                label="⬇️ הורד MG",
                 data=st.session_state["mg_report_bytes"],
                 file_name=f"דוח עבור MG - {datetime.date.today().strftime('%d.%m.%Y')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key="dl_mg_report_top",
             )
 
+    if uploaded:
         if prepare_mg_report:
             with st.spinner("מכין דוח עבור MG..."):
                 try:
                     filtered_original_bytes = filtered_original_workbook_bytes(uploaded)
                     st.session_state["mg_report_bytes"] = filtered_original_bytes
-                    st.success("✅ דוח עבור MG מוכן להורדה.")
-                    mg_col.download_button(
-                        label="⬇️ הורד דוח עבור MG",
+                    st.markdown('<div class="soft-note">✅ דוח עבור MG מוכן להורדה.</div>', unsafe_allow_html=True)
+                    mg_download_col.download_button(
+                        label="⬇️ הורד MG",
                         data=filtered_original_bytes,
                         file_name=f"דוח עבור MG - {datetime.date.today().strftime('%d.%m.%Y')}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -257,12 +354,17 @@ if st.session_state.selected_action == "internet_morchav":
         )
         result_with_date    = result_df[has_date_mask].reset_index(drop=True)
         result_without_date = result_df[~has_date_mask].drop(columns=[coord_col]).reset_index(drop=True)
-        st.success(
-            f"✅ הניתוח הושלם! "
-            f"נמצאו {len(result_with_date)} הזמנות עם תאריך מתואם, "
-            f"{len(result_without_date)} הזמנות ללא תאריך מתואם, "
-            f"{len(biznet_df)} הזמנות BIZNET, "
-            f"{len(phone_df)} הזמנות קו טלפון."
+        st.markdown(
+            f"""
+<div class="status-summary">
+    <strong>✅ הניתוח הושלם</strong>
+    <span>עם תאריך: {len(result_with_date)}</span>
+    <span>ללא תאריך: {len(result_without_date)}</span>
+    <span>BIZNET: {len(biznet_df)}</span>
+    <span>קו טלפון: {len(phone_df)}</span>
+</div>
+""",
+            unsafe_allow_html=True,
         )
 
         today_str = datetime.date.today().strftime("%d.%m.%Y")
@@ -275,10 +377,11 @@ if st.session_state.selected_action == "internet_morchav":
         if not exceptions_df.empty:
             sheets_without_date["חריגים"] = exceptions_df
 
-        download_cols = st.columns(4)
+        st.markdown('<div class="download-heading">הורדות</div>', unsafe_allow_html=True)
+        download_cols = st.columns([1.35, 1.35, 1.05, 1.05, 3.8])
         with download_cols[0]:
             st.download_button(
-                label="⬇️ הורד קובץ אינטרנט – עם תאריך מתואם",
+                label="⬇️ אינטרנט - עם תאריך",
                 data=dfs_to_excel_bytes(sheets_with_date),
                 file_name=f"סטטוס אינטרנט מורכב להרצה - עם תאריך - {today_str}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -287,7 +390,7 @@ if st.session_state.selected_action == "internet_morchav":
 
         with download_cols[1]:
             st.download_button(
-                label="⬇️ הורד קובץ אינטרנט – ללא תאריך מתואם",
+                label="⬇️ אינטרנט - ללא תאריך",
                 data=dfs_to_excel_bytes(sheets_without_date),
                 file_name=f"סטטוס אינטרנט מורכב להרצה - ללא תאריך - {today_str}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -297,7 +400,7 @@ if st.session_state.selected_action == "internet_morchav":
         with download_cols[2]:
             if not biznet_df.empty:
                 st.download_button(
-                    label="⬇️ הורד קובץ BIZNET",
+                    label="⬇️ BIZNET",
                     data=dfs_to_excel_bytes({"הזמנות BIZNET": biznet_df}),
                     file_name=f"סטטוס BIZNET - {today_str}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -307,7 +410,7 @@ if st.session_state.selected_action == "internet_morchav":
         with download_cols[3]:
             if not phone_df.empty:
                 st.download_button(
-                    label="⬇️ הורד קובץ קו טלפון",
+                    label="⬇️ קו טלפון",
                     data=dfs_to_excel_bytes({"הזמנות קו טלפון": phone_df}),
                     file_name=f"סטטוס קו טלפון - {today_str}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
