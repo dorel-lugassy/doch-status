@@ -16,7 +16,7 @@ import streamlit as st
 from utils.excel_utils import load_sheets, dfs_to_excel_bytes
 from processors import internet_morchav
 
-APP_VERSION_UPDATED_AT = "17.08.2026 11:47"
+APP_VERSION_UPDATED_AT = "17.08.2026 11:51"
 
 FILTERED_ORIGINAL_SELLERS = ("אליאור ביטון", "זהבה בלאי", "עומר בר מוחה")
 SELLER_FILTER_COLUMNS = {
@@ -169,6 +169,13 @@ if st.session_state.selected_action == "internet_morchav":
                     filtered_original_bytes = filtered_original_workbook_bytes(uploaded)
                     st.session_state["mg_report_bytes"] = filtered_original_bytes
                     st.success("✅ דוח עבור MG מוכן להורדה.")
+                    mg_col.download_button(
+                        label="⬇️ הורד דוח עבור MG",
+                        data=filtered_original_bytes,
+                        file_name=f"דוח עבור MG - {datetime.date.today().strftime('%d.%m.%Y')}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="dl_mg_report_top_ready",
+                    )
                 except Exception as e:
                     import traceback
                     st.error("❌ שגיאה בהכנת דוח עבור MG")
@@ -240,7 +247,6 @@ if st.session_state.selected_action == "internet_morchav":
         phone_df      = data["phone"]
         biznet_df     = data.get("biznet", result_df.iloc[0:0].copy())
         biznet_df     = biznet_df.drop(columns=["תאריך ושעת התקנה מעודכנים"], errors="ignore")
-        filtered_original_bytes = st.session_state.get("mg_report_bytes")
 
         # ── Split result by "תאריך מתואם" ─────────────────────────────────
         coord_col = "תאריך מתואם"
@@ -258,6 +264,55 @@ if st.session_state.selected_action == "internet_morchav":
             f"{len(biznet_df)} הזמנות BIZNET, "
             f"{len(phone_df)} הזמנות קו טלפון."
         )
+
+        today_str = datetime.date.today().strftime("%d.%m.%Y")
+
+        sheets_with_date = {"סטטוס הזמנות": result_with_date}
+        if not exceptions_df.empty:
+            sheets_with_date["חריגים"] = exceptions_df
+
+        sheets_without_date = {"סטטוס הזמנות": result_without_date}
+        if not exceptions_df.empty:
+            sheets_without_date["חריגים"] = exceptions_df
+
+        download_cols = st.columns(4)
+        with download_cols[0]:
+            st.download_button(
+                label="⬇️ הורד קובץ אינטרנט – עם תאריך מתואם",
+                data=dfs_to_excel_bytes(sheets_with_date),
+                file_name=f"סטטוס אינטרנט מורכב להרצה - עם תאריך - {today_str}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="dl_internet_with_date_top",
+            )
+
+        with download_cols[1]:
+            st.download_button(
+                label="⬇️ הורד קובץ אינטרנט – ללא תאריך מתואם",
+                data=dfs_to_excel_bytes(sheets_without_date),
+                file_name=f"סטטוס אינטרנט מורכב להרצה - ללא תאריך - {today_str}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="dl_internet_without_date_top",
+            )
+
+        with download_cols[2]:
+            if not biznet_df.empty:
+                st.download_button(
+                    label="⬇️ הורד קובץ BIZNET",
+                    data=dfs_to_excel_bytes({"הזמנות BIZNET": biznet_df}),
+                    file_name=f"סטטוס BIZNET - {today_str}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="dl_biznet_top",
+                )
+
+        with download_cols[3]:
+            if not phone_df.empty:
+                st.download_button(
+                    label="⬇️ הורד קובץ קו טלפון",
+                    data=dfs_to_excel_bytes({"הזמנות קו טלפון": phone_df}),
+                    file_name=f"סטטוס קו טלפון - {today_str}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="dl_phone_top",
+                )
 
         # ── Preview: with date ─────────────────────────────────────────────
         st.subheader(f"📋 סטטוס אינטרנט – עם תאריך מתואם ({len(result_with_date)} שורות)")
@@ -281,62 +336,3 @@ if st.session_state.selected_action == "internet_morchav":
         if not biznet_df.empty:
             st.subheader("🌐 תצוגה מקדימה – הזמנות BIZNET")
             st.dataframe(biznet_df, use_container_width=True)
-
-        st.markdown("---")
-        today_str = datetime.date.today().strftime("%d.%m.%Y")
-
-        # ── Download 1: Internet – with coordinated date ───────────────────
-        sheets_with_date = {"סטטוס הזמנות": result_with_date}
-        if not exceptions_df.empty:
-            sheets_with_date["חריגים"] = exceptions_df
-
-        st.download_button(
-            label="⬇️ הורד קובץ אינטרנט – עם תאריך מתואם",
-            data=dfs_to_excel_bytes(sheets_with_date),
-            file_name=f"סטטוס אינטרנט מורכב להרצה - עם תאריך - {today_str}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="dl_internet_with_date",
-        )
-
-        # ── Download 2: Internet – without coordinated date ────────────────
-        sheets_without_date = {"סטטוס הזמנות": result_without_date}
-        if not exceptions_df.empty:
-            sheets_without_date["חריגים"] = exceptions_df
-
-        st.download_button(
-            label="⬇️ הורד קובץ אינטרנט – ללא תאריך מתואם",
-            data=dfs_to_excel_bytes(sheets_without_date),
-            file_name=f"סטטוס אינטרנט מורכב להרצה - ללא תאריך - {today_str}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="dl_internet_without_date",
-        )
-
-        # ── Download 3: BIZNET ─────────────────────────────────────────────
-        if not biznet_df.empty:
-            st.download_button(
-                label="⬇️ הורד קובץ BIZNET",
-                data=dfs_to_excel_bytes({"הזמנות BIZNET": biznet_df}),
-                file_name=f"סטטוס BIZNET - {today_str}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="dl_biznet",
-            )
-
-        # ── Download 4: Filtered original workbook ────────────────────────
-        if filtered_original_bytes:
-            st.download_button(
-                label="⬇️ הורד דוח עבור MG",
-                data=filtered_original_bytes,
-                file_name=f"דוח עבור MG - {today_str}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="dl_filtered_original",
-            )
-
-        # ── Download 5: Phone lines ────────────────────────────────────────
-        if not phone_df.empty:
-            st.download_button(
-                label="⬇️ הורד קובץ קו טלפון",
-                data=dfs_to_excel_bytes({"הזמנות קו טלפון": phone_df}),
-                file_name=f"סטטוס קו טלפון - {today_str}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="dl_phone",
-            )
