@@ -11,10 +11,10 @@ Structure:
 import datetime
 import streamlit as st
 
-from utils.excel_utils import load_sheets, dfs_to_excel_bytes
+from utils.excel_utils import load_sheets, dfs_to_excel_bytes, filtered_original_workbook_bytes
 from processors import internet_morchav
 
-APP_VERSION_UPDATED_AT = "22.06.2026 09:59"
+APP_VERSION_UPDATED_AT = "17.08.2026 11:15"
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -97,11 +97,14 @@ if st.session_state.selected_action == "internet_morchav":
                         result_df, exceptions_df, phone_df = analysis_output
                         biznet_df = result_df.iloc[0:0].copy()
 
+                    filtered_original_bytes = filtered_original_workbook_bytes(uploaded)
+
                     st.session_state["analysis_result"] = {
                         "result":     result_df,
                         "exceptions": exceptions_df,
                         "phone":      phone_df,
                         "biznet":     biznet_df,
+                        "filtered_original": filtered_original_bytes,
                     }
                 except Exception as e:
                     import traceback
@@ -130,6 +133,7 @@ if st.session_state.selected_action == "internet_morchav":
         phone_df      = data["phone"]
         biznet_df     = data.get("biznet", result_df.iloc[0:0].copy())
         biznet_df     = biznet_df.drop(columns=["תאריך ושעת התקנה מעודכנים"], errors="ignore")
+        filtered_original_bytes = data.get("filtered_original")
 
         # ── Split result by "תאריך מתואם" ─────────────────────────────────
         coord_col = "תאריך מתואם"
@@ -140,13 +144,19 @@ if st.session_state.selected_action == "internet_morchav":
         )
         result_with_date    = result_df[has_date_mask].reset_index(drop=True)
         result_without_date = result_df[~has_date_mask].drop(columns=[coord_col]).reset_index(drop=True)
+        filtered_original_msg = (
+            "ונוצר קובץ מקור מסונן לפי מוכרן."
+            if filtered_original_bytes
+            else "קובץ מקור מסונן לפי מוכרן ייווצר בהרצה מחדש."
+        )
 
         st.success(
             f"✅ הניתוח הושלם! "
             f"נמצאו {len(result_with_date)} הזמנות עם תאריך מתואם, "
             f"{len(result_without_date)} הזמנות ללא תאריך מתואם, "
             f"{len(biznet_df)} הזמנות BIZNET, "
-            f"{len(phone_df)} הזמנות קו טלפון."
+            f"{len(phone_df)} הזמנות קו טלפון, "
+            f"{filtered_original_msg}"
         )
 
         # ── Preview: with date ─────────────────────────────────────────────
@@ -211,7 +221,17 @@ if st.session_state.selected_action == "internet_morchav":
                 key="dl_biznet",
             )
 
-        # ── Download 4: Phone lines ────────────────────────────────────────
+        # ── Download 4: Filtered original workbook ────────────────────────
+        if filtered_original_bytes:
+            st.download_button(
+                label="⬇️ הורד קובץ מקור מסונן לפי מוכרן",
+                data=filtered_original_bytes,
+                file_name=f"דוח מקור מסונן לפי מוכרן - {today_str}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="dl_filtered_original",
+            )
+
+        # ── Download 5: Phone lines ────────────────────────────────────────
         if not phone_df.empty:
             st.download_button(
                 label="⬇️ הורד קובץ קו טלפון",

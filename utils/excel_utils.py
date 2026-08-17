@@ -8,10 +8,17 @@ import io
 from typing import Optional, Set
 
 import pandas as pd
+from openpyxl import load_workbook
 
 
 BIZNET_SHEET_NAME = "הזמנות BIZNET"
 COORD_DATE_COL = "תאריך מתואם"
+FILTERED_ORIGINAL_SELLERS = ("אליאור ביטון", "זהבה בלאי", "עומר בר מוחה")
+SELLER_FILTER_COLUMNS = {
+    "סיבים": 7,      # Column G: שם מוכרן
+    "נחושת": 7,      # Column G: שם מוכרן
+    "כל השאר": 9,   # Column I
+}
 
 
 def load_sheets(uploaded_file, sheet_names: list[str]) -> dict[str, pd.DataFrame]:
@@ -80,4 +87,37 @@ def dfs_to_excel_bytes(
                     cell.number_format = "@"
                     if cell.value is not None:
                         cell.value = str(cell.value)
+    return buffer.getvalue()
+
+
+def _cell_text(value) -> str:
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def filtered_original_workbook_bytes(uploaded_file) -> bytes:
+    """
+    Return a copy of the original workbook with only selected seller rows.
+
+    The workbook is edited directly with openpyxl so original sheet names,
+    columns, values, spacing, and formatting are preserved as much as possible.
+    Rows 1-2 are kept; filtering starts from row 3.
+    """
+    source_bytes = uploaded_file.getvalue()
+    workbook = load_workbook(io.BytesIO(source_bytes))
+    allowed_sellers = {_cell_text(seller) for seller in FILTERED_ORIGINAL_SELLERS}
+
+    for sheet_name, seller_col_idx in SELLER_FILTER_COLUMNS.items():
+        if sheet_name not in workbook.sheetnames:
+            raise ValueError(f"חסר גיליון נדרש עבור דוח מוכרנים: {sheet_name}")
+
+        worksheet = workbook[sheet_name]
+        for row_idx in range(worksheet.max_row, 2, -1):
+            seller_name = _cell_text(worksheet.cell(row=row_idx, column=seller_col_idx).value)
+            if seller_name not in allowed_sellers:
+                worksheet.delete_rows(row_idx)
+
+    buffer = io.BytesIO()
+    workbook.save(buffer)
     return buffer.getvalue()
