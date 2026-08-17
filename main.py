@@ -16,7 +16,7 @@ import streamlit as st
 from utils.excel_utils import load_sheets, dfs_to_excel_bytes
 from processors import internet_morchav
 
-APP_VERSION_UPDATED_AT = "17.08.2026 12:01"
+APP_VERSION_UPDATED_AT = "17.08.2026 12:16"
 
 FILTERED_ORIGINAL_SELLERS = ("אליאור ביטון", "זהבה בלאי", "עומר בר מוחה")
 SELLER_FILTER_COLUMNS = {
@@ -85,6 +85,37 @@ def filtered_original_workbook_bytes(uploaded_file) -> bytes:
     workbook.save(buffer)
     return buffer.getvalue()
 
+
+def render_mg_report_generation(uploaded_file, download_container) -> None:
+    with st.spinner("מכין דוח עבור MG..."):
+        try:
+            filtered_original_bytes = filtered_original_workbook_bytes(uploaded_file)
+            st.session_state["mg_report_bytes"] = filtered_original_bytes
+            st.markdown('<div class="soft-note">✅ דוח עבור MG מוכן להורדה.</div>', unsafe_allow_html=True)
+            download_container.download_button(
+                label="⬇️ הורד MG",
+                data=filtered_original_bytes,
+                file_name=f"דוח עבור MG - {datetime.date.today().strftime('%d.%m.%Y')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="dl_mg_report_top_ready",
+            )
+        except Exception as e:
+            import traceback
+            st.error("❌ שגיאה בהכנת דוח עבור MG")
+            st.markdown(
+                f"""
+**סוג השגיאה:** `{type(e).__name__}`
+
+**פירוט:** `{e}`
+
+**מה לבדוק:**
+- האם שמות הגיליונות בקובץ הם בדיוק: `סיבים`, `נחושת`, `כל השאר`?
+- האם קיימות עמודות הפילטר הנדרשות: G בגיליונות `סיבים`/`נחושת`, ו-I בגיליון `כל השאר`?
+"""
+            )
+            with st.expander("🔍 פרטי שגיאה מלאים (Traceback)"):
+                st.code(traceback.format_exc(), language="python")
+
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="מערכת דוחות אקסל",
@@ -118,7 +149,7 @@ st.markdown(
         }
         .block-container { padding-top: 2rem; }
         div[data-testid="stFileUploader"] {
-            margin-bottom: 0.15rem;
+            margin-bottom: 0.45rem;
         }
         div[data-testid="stFileUploader"] section {
             min-height: 3.6rem;
@@ -127,9 +158,6 @@ st.markdown(
         }
         div[data-testid="stHorizontalBlock"] {
             gap: 0.65rem;
-        }
-        .action-offset {
-            height: 1.8rem;
         }
         .status-summary {
             display: flex;
@@ -212,14 +240,11 @@ if st.session_state.selected_action == "internet_morchav":
 
     run_analysis = False
     prepare_mg_report = False
-    upload_col, action_col, mg_col, mg_download_col = st.columns([5.3, 1.15, 1.15, 1.1])
-
-    with upload_col:
-        uploaded = st.file_uploader(
-            "בחר קובץ Excel",
-            type=["xlsx"],
-            key="upload_internet_morchav",
-        )
+    uploaded = st.file_uploader(
+        "בחר קובץ Excel",
+        type=["xlsx"],
+        key="upload_internet_morchav",
+    )
 
     if uploaded:
         uploaded_signature = (uploaded.name, uploaded.size)
@@ -232,8 +257,9 @@ if st.session_state.selected_action == "internet_morchav":
         st.session_state.pop("analysis_result", None)
         st.session_state.pop("mg_report_bytes", None)
 
+    action_col, mg_col, mg_download_col, _spacer_col = st.columns([1.15, 1.15, 1.1, 4.9])
+
     with action_col:
-        st.markdown('<div class="action-offset"></div>', unsafe_allow_html=True)
         run_analysis = st.button(
             "▶️ הפעל ניתוח",
             key="run_internet_morchav",
@@ -241,7 +267,6 @@ if st.session_state.selected_action == "internet_morchav":
         )
 
     with mg_col:
-        st.markdown('<div class="action-offset"></div>', unsafe_allow_html=True)
         prepare_mg_report = st.button(
             "⚙️ דוח עבור MG",
             key="prepare_mg_report_top",
@@ -249,8 +274,7 @@ if st.session_state.selected_action == "internet_morchav":
         )
 
     with mg_download_col:
-        st.markdown('<div class="action-offset"></div>', unsafe_allow_html=True)
-        if uploaded and "mg_report_bytes" in st.session_state:
+        if uploaded and "mg_report_bytes" in st.session_state and not prepare_mg_report:
             st.download_button(
                 label="⬇️ הורד MG",
                 data=st.session_state["mg_report_bytes"],
@@ -260,36 +284,6 @@ if st.session_state.selected_action == "internet_morchav":
             )
 
     if uploaded:
-        if prepare_mg_report:
-            with st.spinner("מכין דוח עבור MG..."):
-                try:
-                    filtered_original_bytes = filtered_original_workbook_bytes(uploaded)
-                    st.session_state["mg_report_bytes"] = filtered_original_bytes
-                    st.markdown('<div class="soft-note">✅ דוח עבור MG מוכן להורדה.</div>', unsafe_allow_html=True)
-                    mg_download_col.download_button(
-                        label="⬇️ הורד MG",
-                        data=filtered_original_bytes,
-                        file_name=f"דוח עבור MG - {datetime.date.today().strftime('%d.%m.%Y')}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key="dl_mg_report_top_ready",
-                    )
-                except Exception as e:
-                    import traceback
-                    st.error("❌ שגיאה בהכנת דוח עבור MG")
-                    st.markdown(
-                        f"""
-**סוג השגיאה:** `{type(e).__name__}`
-
-**פירוט:** `{e}`
-
-**מה לבדוק:**
-- האם שמות הגיליונות בקובץ הם בדיוק: `סיבים`, `נחושת`, `כל השאר`?
-- האם קיימות עמודות הפילטר הנדרשות: G בגיליונות `סיבים`/`נחושת`, ו-I בגיליון `כל השאר`?
-"""
-                    )
-                    with st.expander("🔍 פרטי שגיאה מלאים (Traceback)"):
-                        st.code(traceback.format_exc(), language="python")
-
         # Run analysis button
         if run_analysis:
             with st.spinner("מנתח את הקובץ..."):
@@ -417,6 +411,9 @@ if st.session_state.selected_action == "internet_morchav":
                     key="dl_phone_top",
                 )
 
+        if uploaded and prepare_mg_report:
+            render_mg_report_generation(uploaded, mg_download_col)
+
         # ── Preview: with date ─────────────────────────────────────────────
         st.subheader(f"📋 סטטוס אינטרנט – עם תאריך מתואם ({len(result_with_date)} שורות)")
         st.dataframe(result_with_date, use_container_width=True)
@@ -439,3 +436,6 @@ if st.session_state.selected_action == "internet_morchav":
         if not biznet_df.empty:
             st.subheader("🌐 תצוגה מקדימה – הזמנות BIZNET")
             st.dataframe(biznet_df, use_container_width=True)
+
+    elif uploaded and prepare_mg_report:
+        render_mg_report_generation(uploaded, mg_download_col)
